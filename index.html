@@ -30,7 +30,7 @@
     }
     header h1{
       margin:0 0 10px 0;
-      font-size:36px;
+      font-size:42px;
       background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       -webkit-background-clip:text;
       -webkit-text-fill-color:transparent;
@@ -277,7 +277,7 @@
     @media (max-width:768px){
       .container{padding:15px;}
       header h1{
-        font-size:30px;
+        font-size:40px;
         white-space:nowrap;
         overflow:hidden;
         text-overflow:ellipsis;
@@ -341,7 +341,7 @@
     @media (max-width:480px){
       .container{padding:12px;}
       header h1{
-        font-size:26px;
+        font-size:36px;
         white-space:nowrap;
         overflow:hidden;
         text-overflow:ellipsis;
@@ -365,10 +365,10 @@
 <body>
   <div class="container">
     <header>
-      <h1>🎡 Spin the Wheel of Life</h1>
+      <h1>🎡 Wheel of Life</h1>
       <div class="subtitle">Questions about life • Play with your friends</div>
     </header>
-    <button id="specialQuestionBtn" class="special-question-btn">--</button>
+    <button id="specialQuestionBtn" class="special-question-btn" style="display:none;">--</button>
 
     <div class="spin-section">
       <div class="spin-buttons">
@@ -390,7 +390,7 @@
 
     <div class="controls">
       <div class="control-group" style="width:100%;">
-        <label>Questions (one per line)</label>
+        <label id="questionsLabel" style="cursor:pointer;user-select:none;">Questions (one per line)</label>
         <textarea id="segments" rows="8" placeholder="What's your biggest fear?&#10;What makes you happy?&#10;What's your dream job?&#10;Who inspires you?&#10;What's your favorite memory?&#10;What would you change about yourself?"></textarea>
         <div class="help-text">Add questions that people can ask each other</div>
       </div>
@@ -398,9 +398,15 @@
 
     <div class="controls">
       <div class="control-group" style="width:100%;">
-        <label>Sequence (optional - comma-separated numbers)</label>
-        <input id="sequence" placeholder="e.g. 2,0,4,1,3" />
-        <div class="help-text">Leave empty for default order.</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <input type="checkbox" id="useSequence" style="width:auto;cursor:pointer;" />
+          <label for="useSequence" style="margin:0;cursor:pointer;font-weight:600;">Use Sequence Mode</label>
+        </div>
+        <div id="sequenceContainer" style="display:none;">
+          <label id="sequenceLabel" style="cursor:pointer;user-select:none;">Sequence (comma-separated numbers)</label>
+          <input id="sequence" placeholder="e.g. 2,1,0" />
+          <div class="help-text">Control the order questions appear. Sequence will repeat when done.</div>
+        </div>
         <div style="height:12px"></div>
         <div class="row">
           <button id="saveBtn">💾 Save Questions</button>
@@ -414,7 +420,7 @@
 
   <div id="popupOverlay" class="popup-overlay"></div>
   <div id="popup" class="popup">
-    <h3>✨ Your Question</h3>
+    <h3>✨ The Question is...</h3>
     <p id="popupPrize"></p>
     <button onclick="document.getElementById('popup').classList.remove('show'); document.getElementById('popupOverlay').classList.remove('show');">Got it!</button>
   </div>
@@ -423,30 +429,59 @@
 (() => {
   // defaults
   const defaultSegments = [
-    "What's your biggest fear?",
-    "What makes you happy?",
+    "Do you think the world is fair? (me)",
+    "Do you like sleeping? Usually around what time? (a)",
+    "What is your childhoood like (me)",
+    "Do you like nature or city life? Which would you prefer to live in? (a)",
+    "Do you like photography or videography? (me)",
+    "What kind of person do you like to interact with? (a)",
+    "Do you think the universe real? (me - 3rd dimension 4th etc)",
+    "Do you believe people can truly change? If so, why? (a)",
+    "What kind of life do you wish to live? (me)",
+    "What is your ideal type? (a)",
+    "What do you think is the purpose of life, or what makes life worth living? (me)",
+    "Do you prefer to be with someone who has similar or different personality? (a)",
+    "Who inspires you the most? (me)",
+    "If you live in a fiction world, what do you want to do and wish to be?  (a)",
+    "Do you think people meet for a reason, or is it all coincidence? (me)",
+    "What is your impression of me? (a)",
+    "Do you like to stay at home or go out? (me)",
+    "Do you like to be with someone who is more or less extroverted? (a)",
+    "Where would you wish to travel to?",
     "What's your dream job?",
-    "Who inspires you the most?",
     "What's your favorite memory?",
     "What would you change about yourself?",
-    "What do you think is the purpose of life, or what makes life worth living?",
-    "Do you believe people can truly change? If so, why?",
-    "What do you think the world needs more of—and less of?",
+    "What do you really want to do but haven't yet?",
+    "Do you believe in supernatural things?",
     "Do you like me?",
-    "Do you think people meet for a reason, or is it all coincidence?",
+    "Do you think there is a greater meaning to life?",
     "What's one question about life you don't think anyone can answer?",
-    "What do you like to daydream about?"
+    "What do you like to daydream about?",
+    "What's your biggest fear?",
+    "What happens after we die?",
+    "Are people born good?",
+    "What is the nature of the universe?",
+    "How do you determine right from wrong?",
+    "Is it possible to do a completely selfless deed?", 
+    "How do you define happiness?",
+    "Are you happy with where you are in life right now?",
+    "What makes you feel excited or curious?",
+    "If you had enough money, what would you do with your time?",
+    "What kind of company do you cherish?" 
   ];
-  const defaultSeq = [0,1,2,3,4,5,6];
+  const defaultSeq = [2,1,0];
 
   // keys for localStorage
   const LS_SEG = "dw_segments_v1";
   const LS_SEQ = "dw_seq_v1";
   const LS_PTR = "dw_ptr_v1";
+  const LS_USE_SEQ = "dw_use_seq_v1";
 
   // elements
   const segmentsEl = document.getElementById("segments");
   const seqEl = document.getElementById("sequence");
+  const useSequenceCheckbox = document.getElementById("useSequence");
+  const sequenceContainer = document.getElementById("sequenceContainer");
   const saveBtn = document.getElementById("saveBtn");
   const resetBtn = document.getElementById("resetBtn");
   const clearBtn = document.getElementById("clearStorage");
@@ -461,9 +496,31 @@
   const popupOverlay = document.getElementById("popupOverlay");
   const popupPrize = document.getElementById("popupPrize");
 
+  // Function to randomize array (Fisher-Yates shuffle)
+  function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
   // state
   let segments = JSON.parse(localStorage.getItem(LS_SEG) || "null") || defaultSegments.slice();
-  let seq = JSON.parse(localStorage.getItem(LS_SEQ) || "null") || defaultSeq.slice();
+  let useSequenceMode = localStorage.getItem(LS_USE_SEQ) === "true";
+  // If using sequence mode, use saved sequence or default [2,1,0]
+  // Otherwise, randomize
+  let savedSeq = JSON.parse(localStorage.getItem(LS_SEQ) || "null");
+  let originalSeq = savedSeq !== null ? savedSeq : [2,1,0]; // Store original sequence pattern
+  let seq;
+  if(useSequenceMode){
+    // Use sequence mode - start with original pattern
+    seq = originalSeq.slice(); // Copy the original sequence
+  } else {
+    // Randomize mode
+    seq = shuffleArray(Array.from({length: segments.length}, (_, i) => i));
+  }
   let ptr = parseInt(localStorage.getItem(LS_PTR)||"0",10) || 0;
   let lastQuestion = null; // Store the question text directly instead of index
   let forceNextQuestion = null; // Flag to force next question to be "Do you like me?"
@@ -471,14 +528,73 @@
   // init UI
   function renderUI(){
     segmentsEl.value = segments.join("\n");
-    seqEl.value = seq.join(",");
+    useSequenceCheckbox.checked = useSequenceMode;
+    sequenceContainer.style.display = useSequenceMode ? "block" : "none";
+    if(useSequenceMode){
+      // Ensure sequence is set
+      if(!originalSeq || originalSeq.length === 0){
+        originalSeq = [2,1,0];
+      }
+      if(!seq || seq.length === 0){
+        seq = originalSeq.slice();
+      }
+      seqEl.value = originalSeq.join(","); // Show original pattern, not current shrinking sequence
+    } else {
+      seqEl.value = "";
+    }
     lastLabel.textContent = lastQuestion || "—";
     status.textContent = `${segments.length} questions loaded`;
   }
+  
+  // Toggle sequence mode
+  useSequenceCheckbox.onchange = () => {
+    useSequenceMode = useSequenceCheckbox.checked;
+    sequenceContainer.style.display = useSequenceMode ? "block" : "none";
+    if(useSequenceMode){
+      // Switch to sequence mode - use default [2,1,0] if input is empty
+      const raw = seqEl.value.trim();
+      if(raw === ""){
+        originalSeq = [2,1,0];
+        seq = [2,1,0];
+        seqEl.value = "2,1,0";
+      } else {
+        try {
+          const arr = raw.split(",").map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
+          if(arr.length > 0){
+            originalSeq = arr;
+            seq = arr.slice(); // Copy
+          } else {
+            originalSeq = [2,1,0];
+            seq = [2,1,0];
+            seqEl.value = "2,1,0";
+          }
+        } catch(e){
+          originalSeq = [2,1,0];
+          seq = [2,1,0];
+          seqEl.value = "2,1,0";
+        }
+      }
+    } else {
+      // Switch to random mode
+      seq = shuffleArray(Array.from({length: segments.length}, (_, i) => i));
+      seqEl.value = "";
+    }
+    ptr = 0;
+    currentRotation = 0;
+    wheelContainer.style.transform = "rotate(0deg)";
+    saveState();
+    drawWheel();
+  };
 
   function saveState(){
     localStorage.setItem(LS_SEG, JSON.stringify(segments));
-    localStorage.setItem(LS_SEQ, JSON.stringify(seq));
+    localStorage.setItem(LS_USE_SEQ, useSequenceMode ? "true" : "false");
+    if(useSequenceMode){
+      // Save the original sequence pattern, not the current (shrinking) sequence
+      localStorage.setItem(LS_SEQ, JSON.stringify(originalSeq));
+    } else {
+      localStorage.removeItem(LS_SEQ);
+    }
     localStorage.setItem(LS_PTR, String(ptr));
     status.textContent = "✓ Saved";
     setTimeout(()=>renderUI(),400);
@@ -486,7 +602,9 @@
 
   function resetToDefaults(){
     segments = defaultSegments.slice();
-    seq = defaultSeq.slice();
+    // Default to random mode
+    useSequenceMode = false;
+    seq = shuffleArray(Array.from({length: segments.length}, (_, i) => i));
     ptr = 0;
     currentRotation = 0;
     wheelContainer.style.transform = "rotate(0deg)";
@@ -498,22 +616,36 @@
     const segs = segmentsEl.value.split("\n").map(s=>s.trim()).filter(Boolean);
     if(segs.length < 2){ alert("Please enter at least 2 questions"); return; }
     segments = segs;
-    // parse sequence
-    const raw = seqEl.value.trim();
-    if(raw === ""){ 
-      seq = Array.from({length: segments.length}, (_, i) => i);
-    }
-    else {
-      try {
-        const arr = raw.split(",").map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
-        if(arr.length===0) throw "empty";
-        // validate
-        for(const i of arr) if(i<0 || i>=segments.length) throw "index out of range";
-        seq = arr;
-      } catch(e){
-        alert("Invalid sequence. Use comma-separated numbers (0 to " + (segments.length-1) + ")");
-        return;
+    
+    // Update useSequenceMode from checkbox
+    useSequenceMode = useSequenceCheckbox.checked;
+    
+    if(useSequenceMode){
+      // Sequence mode - parse the sequence
+      const raw = seqEl.value.trim();
+      if(raw === ""){
+        // Default to [2,1,0] if empty
+        originalSeq = [2,1,0];
+        seq = [2,1,0];
+        seqEl.value = "2,1,0";
+      } else {
+        try {
+          const arr = raw.split(",").map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
+          if(arr.length===0) throw "empty";
+          // In sequence mode, values are relative positions (not absolute indices)
+          // So we don't validate against segments.length - they'll be mapped during spin
+          // Just check they're non-negative
+          for(const i of arr) if(i < 0) throw "negative values not allowed";
+          originalSeq = arr;
+          seq = arr.slice(); // Copy to current sequence
+        } catch(e){
+          alert("Invalid sequence. Use comma-separated non-negative numbers (e.g., 2,1,0)");
+          return;
+        }
       }
+    } else {
+      // Random mode - randomize the order
+      seq = shuffleArray(Array.from({length: segments.length}, (_, i) => i));
     }
     ptr = 0;
     currentRotation = 0;
@@ -528,21 +660,70 @@
   // spin logic
   function performSpin() {
     if(segments.length === 0){ alert("No questions left! Please add more questions."); return; }
-    if(!seq || seq.length===0){ alert("Please save your questions first"); return; }
+    
+    // Ensure useSequenceMode is synced with checkbox
+    useSequenceMode = useSequenceCheckbox.checked;
+    
+    // Initialize sequence if needed
+    if(useSequenceMode){
+      if(!originalSeq || originalSeq.length === 0){
+        originalSeq = [2,1,0];
+      }
+      if(!seq || seq.length === 0){
+        seq = originalSeq.slice();
+      }
+    } else {
+      // Random mode
+      if(!seq || seq.length === 0){
+        seq = shuffleArray(Array.from({length: segments.length}, (_, i) => i));
+      }
+    }
+    
+    if(!seq || seq.length === 0){ 
+      alert("Please save your questions first"); 
+      return; 
+    }
     
     let idx;
     // Check if we need to force "Do you like me?" question
     if(forceNextQuestion !== null){
       idx = forceNextQuestion;
       forceNextQuestion = null; // Reset after using
-      specialQuestionBtn.style.opacity = "0.7"; // Reset button appearance
+      // Reset questions label appearance
+      if(questionsLabelClicked){
+        questionsLabel.textContent = "Questions (one per line)";
+        questionsLabelClicked = false;
+      }
     } else {
-      idx = seq[ptr % seq.length];
+      // In sequence mode, use the first value from sequence, then remove it
+      if(useSequenceMode){
+        if(seq.length === 0){
+          // Reset to original sequence pattern
+          seq = originalSeq.slice();
+        }
+        
+        // Use the first value from sequence
+        const pos = seq[0];
+        
+        // Map position directly to index (pos 0 = index 0, pos 1 = index 1, pos 2 = index 2)
+        // If position is beyond available questions, use the last available index
+        if(pos >= segments.length){
+          idx = segments.length - 1;
+        } else {
+          idx = pos;
+        }
+        
+        // Remove the first value from sequence (will be removed after spin completes)
+        // We'll handle the removal in animateToIndex
+      } else {
+        idx = seq[ptr % seq.length];
+        ptr = (ptr + 1);
+      }
     }
     
     if(idx < 0 || idx >= segments.length){ alert("Sequence error. Please save again."); return; }
     // Don't set lastIndex yet - wait until after animation completes
-    ptr = (ptr + 1);
+    // Note: ptr is already incremented in the code above
     localStorage.setItem(LS_PTR, String(ptr));
     localStorage.setItem(LS_SEG, JSON.stringify(segments));
     localStorage.setItem(LS_SEQ, JSON.stringify(seq));
@@ -550,17 +731,63 @@
     // Don't call renderUI() here - wait until after popup shows
   }
   
-  // Special question button handler
-  specialQuestionBtn.onclick = () => {
-    // Find the index of "Do you like me?" in segments
-    const specialIndex = segments.findIndex(q => q === "Do you like me?" || q === "Do you like me");
-    if(specialIndex === -1){
-      alert('Question "Do you like me?" not found. Please add it to your questions.');
-      return;
+  // Make questions label clickable to trigger "Do you like me?" question
+  const questionsLabel = document.getElementById("questionsLabel");
+  const sequenceLabel = document.getElementById("sequenceLabel");
+  let questionsLabelClicked = false;
+  let sequenceLabelClicked = false;
+  
+  questionsLabel.onclick = () => {
+    // First, re-add "Do you like me?" if it was removed
+    let doYouLikeMeIndex = segments.findIndex(q => q.toLowerCase().includes("do you like me"));
+    if(doYouLikeMeIndex === -1){
+      // Add it back to segments
+      segments.push("Do you like me?");
+      doYouLikeMeIndex = segments.length - 1;
+      // Update UI
+      renderUI();
+      drawWheel();
     }
-    forceNextQuestion = specialIndex;
-    specialQuestionBtn.style.opacity = "1";
-    specialQuestionBtn.style.background = "rgba(102,126,234,0.95)";
+    
+    // Set it as next question
+    forceNextQuestion = doYouLikeMeIndex;
+    questionsLabel.textContent = "Questions (one per line).";
+    questionsLabelClicked = true;
+    
+    // Reset sequence label if it was clicked
+    if(sequenceLabelClicked){
+      sequenceLabel.textContent = "Sequence (comma-separated numbers)";
+      sequenceLabelClicked = false;
+    }
+  };
+  
+  sequenceLabel.onclick = () => {
+    // Remove "Do you like me?" from segments entirely
+    const doYouLikeMeIndex = segments.findIndex(q => q.toLowerCase().includes("do you like me"));
+    if(doYouLikeMeIndex !== -1){
+      segments.splice(doYouLikeMeIndex, 1);
+      sequenceLabel.textContent = "Sequence (comma-separated numbers).";
+      sequenceLabelClicked = true;
+      
+      // Update UI and redraw wheel
+      renderUI();
+      drawWheel();
+      saveState();
+    }
+    
+    // Reset questions label if it was clicked
+    if(questionsLabelClicked){
+      questionsLabel.textContent = "Questions (one per line)";
+      questionsLabelClicked = false;
+    }
+    
+    // Reset forceNextQuestion if it was pointing to the removed question
+    if(forceNextQuestion === doYouLikeMeIndex){
+      forceNextQuestion = null;
+    } else if(forceNextQuestion !== null && forceNextQuestion > doYouLikeMeIndex){
+      // Adjust forceNextQuestion index since we removed a question before it
+      forceNextQuestion = forceNextQuestion - 1;
+    }
   };
 
   spinBtn.onclick = performSpin;
@@ -695,20 +922,28 @@
       if(segments.length > 1){
         segments.splice(targetIndex, 1);
         
-        // Update sequence: remove the used index and adjust remaining indices
-        seq = seq.map(idx => {
-          if(idx > targetIndex) return idx - 1; // shift down indices after removed item
-          if(idx === targetIndex) return -1; // mark for removal
-          return idx;
-        }).filter(idx => idx >= 0); // remove the used index
-        
-        // If sequence is empty, regenerate default sequence
-        if(seq.length === 0){
-          seq = Array.from({length: segments.length}, (_, i) => i);
+        // Update sequence based on mode
+        if(useSequenceMode){
+          // In sequence mode, remove the first value from sequence (already used)
+          seq.shift(); // Remove first element
+          // If sequence is empty, it will reset to originalSeq in next performSpin
+        } else {
+          // In random mode, remove the used index and adjust remaining indices
+          seq = seq.map(idx => {
+            if(idx > targetIndex) return idx - 1; // shift down indices after removed item
+            if(idx === targetIndex) return -1; // mark for removal
+            return idx;
+          }).filter(idx => idx >= 0); // remove the used index
+          
+          // If sequence is empty, regenerate random sequence
+          if(seq.length === 0){
+            seq = shuffleArray(Array.from({length: segments.length}, (_, i) => i));
+          }
+          // Reset pointer for random mode
+          ptr = 0;
         }
         
-        // Reset pointer and rotation
-        ptr = 0;
+        // Reset rotation (but keep ptr in sequence mode)
         currentRotation = 0;
         wheelContainer.style.transform = "rotate(0deg)";
         
