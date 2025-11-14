@@ -404,7 +404,7 @@
         </div>
         <div id="sequenceContainer" style="display:none;">
           <label id="sequenceLabel" style="cursor:pointer;user-select:none;">Sequence (comma-separated numbers)</label>
-          <input id="sequence" placeholder="e.g. 2,1,0" />
+          <input id="sequence" placeholder="e.g. 7,6,5" />
           <div class="help-text">Control the order questions appear. Sequence will repeat when done.</div>
         </div>
         <div style="height:12px"></div>
@@ -429,24 +429,29 @@
 (() => {
   // defaults
   const defaultSegments = [
-    "Do you think the world is fair? (me)",
-    "Do you like sleeping? Usually around what time? (a)",
-    "What is your childhoood like (me)",
-    "Do you like nature or city life? Which would you prefer to live in? (a)",
-    "Do you like photography or videography? (me)",
-    "What kind of person do you like to interact with? (a)",
-    "Do you think the universe real? (me - 3rd dimension 4th etc)",
-    "Do you believe people can truly change? If so, why? (a)",
-    "What kind of life do you wish to live? (me)",
-    "What is your ideal type? (a)",
-    "What do you think is the purpose of life, or what makes life worth living? (me)",
-    "Do you prefer to be with someone who has similar or different personality? (a)",
-    "Who inspires you the most? (me)",
-    "If you live in a fiction world, what do you want to do and wish to be?  (a)",
-    "Do you think people meet for a reason, or is it all coincidence? (me)",
-    "What is your impression of me? (a)",
-    "Do you like to stay at home or go out? (me)",
-    "Do you like to be with someone who is more or less extroverted? (a)",
+    "How do you find purpose and meaning?",
+    "What makes you feel excited or curious?",
+    "If you had enough money, what would you do with your time?",
+    "What kind of company do you cherish?" ,
+    "Are you happy with where you are in life right now?",
+    "Do you think the world is fair?",
+    "Do you like nature or city life? Which would you prefer to live in?",
+    "What is your childhoood like",
+    "Do you like sleeping",
+    "Do you like photography or videography?",
+    "What kind of person do you like to interact with?",
+    "Do you think the universe real?",
+    "Do you believe people can truly change? If so, why?",
+    "What kind of life do you wish to live?",
+    "What is your ideal type?",
+    "What do you think is the purpose of life, or what makes life worth living?",
+    "Do you prefer to be with someone who has similar or different personality?",
+    "Who inspires you the most?",
+    "If you live in a fiction world, what do you want to do and wish to be? ",
+    "Do you think people meet for a reason, or is it all coincidence?",
+    "What is your impression of me?",
+    "Do you like to stay at home or go out?",
+    "Do you like to be with someone who is more or less extroverted?",
     "Where would you wish to travel to?",
     "What's your dream job?",
     "What's your favorite memory?",
@@ -464,12 +469,8 @@
     "How do you determine right from wrong?",
     "Is it possible to do a completely selfless deed?", 
     "How do you define happiness?",
-    "Are you happy with where you are in life right now?",
-    "What makes you feel excited or curious?",
-    "If you had enough money, what would you do with your time?",
-    "What kind of company do you cherish?" 
   ];
-  const defaultSeq = [2,1,0];
+  const defaultSeq = [7,6,5];
 
   // keys for localStorage
   const LS_SEG = "dw_segments_v1";
@@ -509,10 +510,10 @@
   // state
   let segments = JSON.parse(localStorage.getItem(LS_SEG) || "null") || defaultSegments.slice();
   let useSequenceMode = localStorage.getItem(LS_USE_SEQ) === "true";
-  // If using sequence mode, use saved sequence or default [2,1,0]
+  // If using sequence mode, use saved sequence or default sequence
   // Otherwise, randomize
   let savedSeq = JSON.parse(localStorage.getItem(LS_SEQ) || "null");
-  let originalSeq = savedSeq !== null ? savedSeq : [2,1,0]; // Store original sequence pattern
+  let originalSeq = savedSeq !== null ? savedSeq : defaultSeq.slice(); // Store original sequence pattern
   let seq;
   if(useSequenceMode){
     // Use sequence mode - start with original pattern
@@ -533,7 +534,7 @@
     if(useSequenceMode){
       // Ensure sequence is set
       if(!originalSeq || originalSeq.length === 0){
-        originalSeq = [2,1,0];
+        originalSeq = defaultSeq.slice();
       }
       if(!seq || seq.length === 0){
         seq = originalSeq.slice();
@@ -543,7 +544,9 @@
       seqEl.value = "";
     }
     lastLabel.textContent = lastQuestion || "—";
-    status.textContent = `${segments.length} questions loaded`;
+    // Count questions excluding "Do you like me?"
+    const questionCount = segments.filter(q => !q.toLowerCase().includes("do you like me")).length;
+    status.textContent = `${questionCount} questions loaded`;
   }
   
   // Toggle sequence mode
@@ -551,12 +554,12 @@
     useSequenceMode = useSequenceCheckbox.checked;
     sequenceContainer.style.display = useSequenceMode ? "block" : "none";
     if(useSequenceMode){
-      // Switch to sequence mode - use default [2,1,0] if input is empty
+      // Switch to sequence mode - use default sequence if input is empty
       const raw = seqEl.value.trim();
       if(raw === ""){
-        originalSeq = [2,1,0];
-        seq = [2,1,0];
-        seqEl.value = "2,1,0";
+          originalSeq = defaultSeq.slice();
+          seq = defaultSeq.slice();
+          seqEl.value = defaultSeq.join(",");
       } else {
         try {
           const arr = raw.split(",").map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
@@ -564,14 +567,14 @@
             originalSeq = arr;
             seq = arr.slice(); // Copy
           } else {
-            originalSeq = [2,1,0];
-            seq = [2,1,0];
-            seqEl.value = "2,1,0";
+            originalSeq = defaultSeq.slice();
+            seq = defaultSeq.slice();
+            seqEl.value = defaultSeq.join(",");
           }
         } catch(e){
-          originalSeq = [2,1,0];
-          seq = [2,1,0];
-          seqEl.value = "2,1,0";
+          originalSeq = defaultSeq.slice();
+          seq = defaultSeq.slice();
+          seqEl.value = defaultSeq.join(",");
         }
       }
     } else {
@@ -624,10 +627,10 @@
       // Sequence mode - parse the sequence
       const raw = seqEl.value.trim();
       if(raw === ""){
-        // Default to [2,1,0] if empty
-        originalSeq = [2,1,0];
-        seq = [2,1,0];
-        seqEl.value = "2,1,0";
+        // Default to defaultSeq if empty
+        originalSeq = defaultSeq.slice();
+        seq = defaultSeq.slice();
+        seqEl.value = defaultSeq.join(",");
       } else {
         try {
           const arr = raw.split(",").map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
@@ -639,7 +642,7 @@
           originalSeq = arr;
           seq = arr.slice(); // Copy to current sequence
         } catch(e){
-          alert("Invalid sequence. Use comma-separated non-negative numbers (e.g., 2,1,0)");
+          alert("Invalid sequence. Use comma-separated non-negative numbers (e.g., 7,6,5)");
           return;
         }
       }
@@ -667,7 +670,7 @@
     // Initialize sequence if needed
     if(useSequenceMode){
       if(!originalSeq || originalSeq.length === 0){
-        originalSeq = [2,1,0];
+        originalSeq = defaultSeq.slice();
       }
       if(!seq || seq.length === 0){
         seq = originalSeq.slice();
@@ -849,6 +852,16 @@
     // center - make it smaller on mobile
     const centerSize = isMobile ? 30 : 40;
     ctx.beginPath(); ctx.arc(cx,cy,centerSize,0,2*Math.PI); ctx.fillStyle="#222"; ctx.fill();
+    
+    // Add wheel emoji in center
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fff";
+    const emojiSize = isMobile ? 20 : 28;
+    ctx.font = `${emojiSize}px sans-serif`;
+    ctx.fillText("🎡", cx, cy);
+    ctx.restore();
   }
 
   function wrapText(ctx, text, x, fontSize, maxWidth){
