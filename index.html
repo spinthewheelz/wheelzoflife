@@ -3,25 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Deterministic Spin Wheel</title>
+  <title>Deterministic Spin Wheel (tap to spin)</title>
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; margin:16px; max-width:900px;}
     header{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
     textarea,input{width:100%;box-sizing:border-box;padding:8px}
-    #wrap{width:100%;max-width:520px;margin:12px auto;position:relative}
-    canvas{width:100%;height:auto;display:block;border-radius:8px}
+    #wrap{width:100%;max-width:520px;margin:12px auto;position:relative;touch-action:manipulation}
+    canvas{width:100%;height:auto;display:block;border-radius:8px;user-select:none}
     .pointer{position:absolute;left:50%;transform:translateX(-50%);top:6px;width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:24px solid #111}
     .row{display:flex;gap:8px}
     button{padding:8px 12px;border-radius:6px;border:1px solid #ccc;background:#fff}
     @media (max-width:420px){button{padding:8px}}
     .small{font-size:13px;color:#555}
+    /* show pointer cursor to indicate tap target */
+    #wrap.clickable { cursor: pointer; }
   </style>
 </head>
 <body>
   <header>
     <h2 style="margin:0">Deterministic Spin Wheel</h2>
-    <div class="small">Mobile-ready • static HTML</div>
+    <div class="small">Tap / click the wheel to spin • Mobile-ready</div>
   </header>
 
   <div class="controls">
@@ -66,183 +68,10 @@
   const defaultSegments = ["Prize A","Prize B","Prize C","Prize D","Prize E","Prize F"];
   const defaultSeq = [0,1,2,3,4,5];
 
-  // keys for localStorage
+  // localStorage keys
   const LS_SEG = "dw_segments_v1";
   const LS_SEQ = "dw_seq_v1";
   const LS_PTR = "dw_ptr_v1";
 
   // elements
-  const segmentsEl = document.getElementById("segments");
-  const seqEl = document.getElementById("sequence");
-  const saveBtn = document.getElementById("saveBtn");
-  const resetBtn = document.getElementById("resetBtn");
-  const clearBtn = document.getElementById("clearStorage");
-  const spinBtn = document.getElementById("spinBtn");
-  const force0 = document.getElementById("force0");
-  const lastLabel = document.getElementById("lastLabel");
-  const status = document.getElementById("status");
-  const canvas = document.getElementById("wheel");
-  const wrapper = canvas.parentNode;
-  const ctx = canvas.getContext("2d");
-
-  // state
-  let segments = JSON.parse(localStorage.getItem(LS_SEG) || "null") || defaultSegments.slice();
-  let seq = JSON.parse(localStorage.getItem(LS_SEQ) || "null") || defaultSeq.slice();
-  let ptr = parseInt(localStorage.getItem(LS_PTR)||"0",10) || 0;
-  let lastIndex = null;
-
-  // init UI
-  function renderUI(){
-    segmentsEl.value = segments.join("\n");
-    seqEl.value = seq.join(",");
-    lastLabel.textContent = lastIndex===null ? "—" : `${lastIndex} → ${segments[lastIndex]}`;
-    status.textContent = `ptr=${ptr}  (n=${segments.length})`;
-  }
-
-  function saveState(){
-    localStorage.setItem(LS_SEG, JSON.stringify(segments));
-    localStorage.setItem(LS_SEQ, JSON.stringify(seq));
-    localStorage.setItem(LS_PTR, String(ptr));
-    status.textContent = "Saved";
-    setTimeout(()=>renderUI(),400);
-  }
-
-  function resetToDefaults(){
-    segments = defaultSegments.slice();
-    seq = defaultSeq.slice();
-    ptr = 0;
-    saveState();
-    drawWheel();
-  }
-
-  saveBtn.onclick = () => {
-    const segs = segmentsEl.value.split("\n").map(s=>s.trim()).filter(Boolean);
-    if(segs.length < 2){ alert("Enter at least 2 segments"); return; }
-    segments = segs;
-    // parse sequence
-    const raw = seqEl.value.trim();
-    if(raw === ""){ seq = defaultSeq.slice(); }
-    else {
-      try {
-        const arr = raw.split(",").map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
-        if(arr.length===0) throw "empty";
-        // validate
-        for(const i of arr) if(i<0 || i>=segments.length) throw "index out of range";
-        seq = arr;
-      } catch(e){
-        alert("Sequence invalid: ensure comma-separated indices within range 0..N-1");
-        return;
-      }
-    }
-    ptr = 0;
-    saveState();
-    drawWheel();
-  };
-
-  resetBtn.onclick = ()=>{ if(confirm("Reset to defaults?")) { resetToDefaults(); } };
-  clearBtn.onclick = ()=>{ if(confirm("Clear saved state (localStorage)?")) { localStorage.removeItem(LS_SEG); localStorage.removeItem(LS_SEQ); localStorage.removeItem(LS_PTR); location.reload(); } };
-
-  // spin logic
-  spinBtn.onclick = () => {
-    if(!seq || seq.length===0){ alert("Sequence empty — save a sequence first"); return; }
-    const idx = seq[ptr % seq.length];
-    if(idx < 0 || idx >= segments.length){ alert("Sequence index out of range. Fix sequence."); return; }
-    lastIndex = idx;
-    ptr = (ptr + 1);
-    localStorage.setItem(LS_PTR, String(ptr));
-    localStorage.setItem(LS_SEG, JSON.stringify(segments));
-    localStorage.setItem(LS_SEQ, JSON.stringify(seq));
-    animateToIndex(idx, 4.0);
-    renderUI();
-  };
-
-  force0.onclick = ()=>{
-    lastIndex = 0;
-    animateToIndex(0, 3.0);
-    renderUI();
-  };
-
-  // Drawing wheel
-  function drawWheel(){
-    const dpr = window.devicePixelRatio || 1;
-    const size = Math.min(wrapper.clientWidth, 520);
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    canvas.style.width = size + "px";
-    canvas.style.height = size + "px";
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
-    const cx = w/2, cy = h/2;
-    const radius = Math.min(w,h)*0.45;
-    ctx.clearRect(0,0,w,h);
-
-    const n = segments.length;
-    const angle = 2*Math.PI / n;
-    const palette = ["#f94144","#f3722c","#f8961e","#f9c74f","#90be6d","#43aa8b","#577590","#6a4c93"];
-    for(let i=0;i<n;i++){
-      const start = -Math.PI/2 + i*angle;
-      ctx.beginPath();
-      ctx.moveTo(cx,cy);
-      ctx.arc(cx,cy,radius,start,start+angle);
-      ctx.closePath();
-      ctx.fillStyle = palette[i % palette.length];
-      ctx.fill();
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
-
-      // text
-      ctx.save();
-      ctx.translate(cx,cy);
-      ctx.rotate(start + angle/2);
-      ctx.textAlign = "right";
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 14px sans-serif";
-      const label = segments[i];
-      wrapText(ctx, label, radius - 12, 14);
-      ctx.restore();
-    }
-    // center
-    ctx.beginPath(); ctx.arc(cx,cy,40,0,2*Math.PI); ctx.fillStyle="#222"; ctx.fill();
-  }
-
-  function wrapText(ctx, text, x, lineHeight){
-    // draw short text on one line (clip if too long)
-    // We'll simply draw one line for simplicity
-    ctx.fillText(text, x, 6);
-  }
-
-  // animate rotation by rotating wrapper element CSS transform
-  let currentRotation = 0; // degrees
-  const pointerOffset = -90; // our drawing starts at -90deg
-  function animateToIndex(targetIndex, durationSec){
-    const n = segments.length;
-    const segAngle = 360 / n;
-    // center of that segment
-    const targetAngle = pointerOffset + targetIndex*segAngle + segAngle/2;
-    // do multiple spins for smoothness
-    const full = 3; // full turns
-    // we want wrapper to rotate to finalRotation relative to 0 (deg)
-    // finalRotation so that the segment center is at the pointer (top)
-    const finalRotation = full*360 - targetAngle;
-    // apply transition
-    wrapper.style.transition = `transform ${durationSec}s cubic-bezier(.14,.69,.29,1)`;
-    wrapper.style.transform = `rotate(${finalRotation}deg)`;
-    // remove transition after done and keep currentRotation consistent
-    setTimeout(()=>{
-      wrapper.style.transition = "";
-      currentRotation = finalRotation % 360;
-      // keep transform applied (so looks the same)
-      wrapper.style.transform = `rotate(${currentRotation}deg)`;
-    }, (durationSec*1000)+80);
-  }
-
-  // initial
-  window.addEventListener("resize", drawWheel);
-  renderUI();
-  drawWheel();
-
-})();
-</script>
-</body>
-</html>
+  const segmentsEl = document.getElementBy
