@@ -35,6 +35,9 @@
       -webkit-background-clip:text;
       -webkit-text-fill-color:transparent;
       background-clip:text;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
     header .subtitle{
       font-size:16px;
@@ -272,15 +275,89 @@
       box-shadow:0 4px 15px rgba(102,126,234,0.4);
     }
     @media (max-width:768px){
-      .container{padding:20px;}
-      header h1{font-size:28px;}
+      .container{padding:15px;}
+      header h1{
+        font-size:30px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      header .subtitle{font-size:14px;}
       .controls{flex-direction:column;}
       .control-group{min-width:100%;}
       .special-question-btn{
         top:10px;
         right:10px;
         padding:8px 12px;
-        font-size:12px;
+        font-size:11px;
+      }
+      .spin-section{
+        flex-direction:column;
+        align-items:center;
+        gap:15px;
+        margin:20px 0;
+      }
+      .spin-buttons{
+        width:100%;
+        justify-content:center;
+      }
+      .spin-buttons button{
+        font-size:14px !important;
+        padding:12px 24px !important;
+        width:100%;
+        max-width:300px;
+      }
+      .last-result{
+        width:100%;
+        max-width:300px;
+        text-align:center;
+        min-width:auto;
+        padding:12px;
+      }
+      .last-result-value{
+        font-size:14px;
+      }
+      .last-result-label{
+        font-size:11px;
+      }
+      #wrap{
+        margin:20px auto;
+      }
+      textarea{
+        min-height:100px;
+        font-size:13px;
+      }
+      input{
+        font-size:13px;
+      }
+      label{
+        font-size:13px;
+      }
+      button{
+        font-size:13px;
+        padding:10px 16px;
+      }
+    }
+    @media (max-width:480px){
+      .container{padding:12px;}
+      header h1{
+        font-size:26px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      .spin-section{
+        gap:12px;
+      }
+      .spin-buttons button{
+        font-size:13px !important;
+        padding:10px 20px !important;
+      }
+      .last-result{
+        padding:10px;
+      }
+      .last-result-value{
+        font-size:13px;
       }
     }
   </style>
@@ -323,7 +400,7 @@
       <div class="control-group" style="width:100%;">
         <label>Sequence (optional - comma-separated numbers)</label>
         <input id="sequence" placeholder="e.g. 2,0,4,1,3" />
-        <div class="help-text">Control the order questions appear. Leave empty for default order.</div>
+        <div class="help-text">Leave empty for default order.</div>
         <div style="height:12px"></div>
         <div class="row">
           <button id="saveBtn">💾 Save Questions</button>
@@ -352,7 +429,13 @@
     "Who inspires you the most?",
     "What's your favorite memory?",
     "What would you change about yourself?",
-    "Do you like me?"
+    "What do you think is the purpose of life, or what makes life worth living?",
+    "Do you believe people can truly change? If so, why?",
+    "What do you think the world needs more of—and less of?",
+    "Do you like me?",
+    "Do you think people meet for a reason, or is it all coincidence?",
+    "What's one question about life you don't think anyone can answer?",
+    "What do you like to daydream about?"
   ];
   const defaultSeq = [0,1,2,3,4,5,6];
 
@@ -509,6 +592,12 @@
     const n = segments.length;
     const angle = 2*Math.PI / n;
     const palette = ["#f94144","#f3722c","#f8961e","#f9c74f","#90be6d","#43aa8b","#577590","#6a4c93"];
+    
+    // Calculate responsive font size based on wheel size
+    const baseFontSize = size < 400 ? 10 : size < 500 ? 12 : 14;
+    const isMobile = window.innerWidth <= 768;
+    const fontSize = isMobile ? Math.max(8, baseFontSize - 2) : baseFontSize;
+    
     for(let i=0;i<n;i++){
       const start = -Math.PI/2 + i*angle;
       ctx.beginPath();
@@ -525,18 +614,31 @@
       ctx.rotate(start + angle/2);
       ctx.textAlign = "right";
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 14px sans-serif";
+      ctx.font = `bold ${fontSize}px sans-serif`;
       const label = segments[i];
-      wrapText(ctx, label, radius - 12, 14);
+      wrapText(ctx, label, radius - 12, fontSize, radius * 0.7);
       ctx.restore();
     }
-    // center
-    ctx.beginPath(); ctx.arc(cx,cy,40,0,2*Math.PI); ctx.fillStyle="#222"; ctx.fill();
+    // center - make it smaller on mobile
+    const centerSize = isMobile ? 30 : 40;
+    ctx.beginPath(); ctx.arc(cx,cy,centerSize,0,2*Math.PI); ctx.fillStyle="#222"; ctx.fill();
   }
 
-  function wrapText(ctx, text, x, lineHeight){
-    // draw short text on one line (clip if too long)
-    // We'll simply draw one line for simplicity
+  function wrapText(ctx, text, x, fontSize, maxWidth){
+    // Measure text width
+    const metrics = ctx.measureText(text);
+    const textWidth = metrics.width;
+    
+    // If text is too long, reduce font size until it fits
+    if(maxWidth && textWidth > maxWidth){
+      let adjustedSize = fontSize;
+      while(adjustedSize > 6 && ctx.measureText(text).width > maxWidth){
+        adjustedSize -= 0.5;
+        ctx.font = `bold ${adjustedSize}px sans-serif`;
+      }
+    }
+    
+    // Draw text
     ctx.fillText(text, x, 6);
   }
 
